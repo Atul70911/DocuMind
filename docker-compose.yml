@@ -83,11 +83,11 @@ services:
     networks:
       - documind-net
 
-  # ── Ollama ───────────────────────────────────────────────────
+# ── Ollama ───────────────────────────────────────────────────
   ollama:
     image: ollama/ollama
     volumes:
-    - ollama_data:/root/.ollama
+      - ollama_data:/root/.ollama
     deploy:
       resources:
         reservations:
@@ -95,8 +95,9 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-  networks:
-    - documind-net
+    networks:
+      - documind-net
+
   # ── Nginx ────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine
@@ -110,7 +111,6 @@ services:
       - ai-worker
     networks:
       - documind-net
-
 # ── Volumes ──────────────────────────────────────────────────
 volumes:
   mongo_data:
