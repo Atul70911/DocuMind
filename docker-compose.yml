@@ -32,6 +32,8 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
+      minio:
+        condition: service_healthy
     networks:
       - documind-net
 
@@ -111,12 +113,30 @@ services:
       - ai-worker
     networks:
       - documind-net
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9001:9001"   # console UI — useful for dev, remove/restrict in real prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - documind-net
 # ── Volumes ──────────────────────────────────────────────────
 volumes:
   mongo_data:
   qdrant_data:
   redis_data:
   ollama_data:
+  minio_data:
 
 # ── Networks ─────────────────────────────────────────────────
 networks:

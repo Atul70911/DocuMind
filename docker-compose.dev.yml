@@ -40,3 +40,12 @@ services:
       - ./infra/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./apps/api/src:/app/src
+    environment:
+      - NODE_ENV=development
+    command: npm run dev:worker

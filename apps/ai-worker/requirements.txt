@@ -1,0 +1,16 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-multipart==0.0.20
+
+# AI / ML
+sentence-transformers==3.3.1
+openai-whisper==20240930
+marker-pdf==1.2.3
+
+# HTTP client for calling Ollama
+httpx==0.28.1
+
+# Logging
+structlog==24.4.0
