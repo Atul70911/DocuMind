@@ -10,6 +10,13 @@ const envSchema=z.object({
 
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('7d'),
+
+  MINIO_ENDPOINT: z.string().min(1, 'MINIO_ENDPOINT is required'),
+  MINIO_PORT: z.coerce.number().default(9000),
+  MINIO_ACCESS_KEY: z.string().min(1, 'MINIO_ACCESS_KEY is required'),
+  MINIO_SECRET_KEY: z.string().min(1, 'MINIO_SECRET_KEY is required'),
+  MINIO_BUCKET: z.string().default('documind-uploads'),
+  MINIO_USE_SSL: z.coerce.boolean().default(false),
 });
 
 const parsed = envSchema.safeParse(process.env);
