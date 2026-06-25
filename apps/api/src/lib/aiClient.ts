@@ -53,5 +53,9 @@ export const aiClient = {
       method: 'POST',
       body: JSON.stringify({ fileUrl }),
     }),
+    chatCompletion: async (messages: { role: string; content: string }[]) => {
+    const result = await request<{ content: string }>('/chat-completion', { messages });
+    return result.content;
+  },
 
 };

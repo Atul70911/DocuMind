@@ -117,5 +117,19 @@ documents.get('/:id/download-url', async (c) => {
   }
 });
 
+documents.post('/:id/retry-summary', async (c) => {
+  const userId = c.get('userId');
+  const documentId = c.req.param('id');
+
+  try {
+    const summary = await retrySummary(documentId, userId);
+    return c.json({ summary });
+  } catch (err) {
+    if (err instanceof DocumentError) {
+      return c.json({ error: err.message }, err.statusCode as 404 | 409);
+    }
+    throw err;
+  }
+});
 
 export default documents;
