@@ -4,6 +4,8 @@ import { redis } from './lib/redis.js';
 import { env } from './config/env.js';
 import { connectDB } from './lib/db.js';
 import {ensureBucketExists} from './lib/storage.js'
+import { WebSocketServer, type WebSocket } from 'ws';
+
 
 import { globalBodyLimit } from './middleware/bodyLimit.js';
 import { requestLogger } from './middleware/logger.js';
@@ -18,6 +20,8 @@ import chatRoutes from './routes/chat.routes.js';
 
 
 import mongoose from 'mongoose';
+import { AccessTokenPayload } from './utils/jwt.js';
+
 
 
 
@@ -46,10 +50,47 @@ async function main() {
   await connectDB();
   await ensureBucketExists();
 
-    server = serve({ fetch: app.fetch, port: env.PORT });
-  console.log(`🚀 Server running on port ${env.PORT}`);
+  const server = serve({ fetch: app.fetch, port: env.PORT });
 
-  
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (request, socket, head) => {
+    const url = new URL(request.url ?? '', `http://${request.headers.host}`);
+
+    if (url.pathname !== '/ws') {
+      socket.destroy();
+      return;
+    }
+
+    const token = url.searchParams.get('token');
+
+    if (!token) {
+      socket.destroy();
+      return;
+    }
+
+    let payload: AccessTokenPayload;
+    try {
+      payload = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
+    } catch {
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      registerConnection(payload.userId, ws);
+
+      ws.on('close', () => {
+        removeConnection(payload.userId, ws);
+      });
+
+      ws.on('error', () => {
+        removeConnection(payload.userId, ws);
+      });
+    });
+  });
+
+  console.log(`🚀 Server running on port ${env.PORT}`);
 }
 
 main();
