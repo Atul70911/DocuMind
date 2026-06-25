@@ -1,12 +1,15 @@
-import { Schema, model, type Document } from 'mongoose';
+import { Schema, model, Types, HydratedDocument } from 'mongoose';
 
-export interface IUser extends Document {
+export interface IUser {
+  _id: Types.ObjectId;
   email: string;
   passwordHash: string;
   name?: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type IUserDocument = HydratedDocument<IUser>;
 
 const userSchema = new Schema<IUser>(
   {
@@ -26,7 +29,7 @@ const userSchema = new Schema<IUser>(
       trim: true,
     },
   },
-  { timestamps: true } 
+  { timestamps: true }
 );
 
 export const User = model<IUser>('User', userSchema);

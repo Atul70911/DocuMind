@@ -1,10 +1,9 @@
 import { Schema, model, Types, HydratedDocument } from 'mongoose';
 import { randomBytes } from 'crypto';
 
-// ✅ Plain interface — no extends MongoDocument
 export interface IShareLink {
   _id: Types.ObjectId;
-  documentId: Types.ObjectId;      // ✅ Types.ObjectId, not Schema.Types.ObjectId
+  documentId: Types.ObjectId;      
   userId: Types.ObjectId;
   token: string;
   allowChat: boolean;
