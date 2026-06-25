@@ -8,6 +8,7 @@ import { requestLogger } from './middleware/logger.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.routes.js';
+import documentRoutes from './routes/document.routes.js';
 
 const app = new Hono();
 
@@ -16,10 +17,13 @@ app.use('*', requestLogger);
 app.onError(errorHandler);
 app.get('/health', (c) => c.json({ status: 'ok' }));
 app.route('/api/auth', authRoutes);
+app.route('/api/documents', documentRoutes);
+
 
 
 async function main() {
   await connectDB();
+  await ensureBucketExists();
 
   serve({
     fetch: app.fetch,
