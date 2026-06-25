@@ -1,10 +1,12 @@
 import { qdrant } from '../lib/qdrant.js';
 import { aiClient } from '../lib/aiClient.js';
+import { DocumentModel } from '../models/document.model.js';
 
 const COLLECTION_NAME = 'document_chunks';
 
 export interface SearchResult {
   documentId: string;
+  documentTitle: string;
   chunkIndex: number;
   text: string;
   score: number;
@@ -38,10 +40,22 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
     with_payload: true,
   });
 
-  return results.map((r) => ({
-    documentId: r.payload?.documentId as string,
-    chunkIndex: r.payload?.chunkIndex as number,
-    text: r.payload?.text as string,
-    score: r.score,
-  }));
+  if (results.length === 0) return [];
+
+
+  const documentIds = [...new Set(results.map((r) => r.payload?.documentId as string))];
+  const documents = await DocumentModel.find({ _id: { $in: documentIds } }, 'title');
+
+  const titleMap = new Map(documents.map((d) => [d._id.toString(), d.title]));
+
+  return results.map((r) => {
+    const docId = r.payload?.documentId as string;
+    return {
+      documentId: docId,
+      documentTitle: titleMap.get(docId) ?? 'Unknown document',
+      chunkIndex: r.payload?.chunkIndex as number,
+      text: r.payload?.text as string,
+      score: r.score,
+    };
+  });
 }

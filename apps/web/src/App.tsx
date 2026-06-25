@@ -6,6 +6,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { ChatPage } from './pages/ChatPage';
 import { useDocumentStatusSocket } from './hooks/useDocumentStatusSocket';
+import { SearchPage } from './pages/SearchPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +45,14 @@ export default function App() {
               }
             />
             <Route path="/" element={<Navigate to="/library" replace />} />
+            <Route
+              path="/search"
+              element={
+                <ProtectedRoute>
+                  <SearchPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
