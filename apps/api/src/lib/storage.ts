@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, HeadBucketCommand, CreateBucketCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadBucketCommand, CreateBucketCommand,DeleteObjectCommand  } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env.js';
 
@@ -52,5 +52,13 @@ export async function getFileUrl(key: string, expiresInSeconds = 3600): Promise<
     return await getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
   } catch (err) {
     throw new StorageError('Failed to generate file URL', err);
+  }
+}
+
+export async function deleteFile(key: string) {
+  try {
+    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+  } catch (err) {
+    throw new StorageError('Failed to delete file from storage', err);
   }
 }

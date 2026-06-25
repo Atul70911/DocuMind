@@ -16,6 +16,15 @@ export async function ensureCollection(collectionName: string, vectorSize: numbe
         distance: 'Cosine',
       },
     });
+    await qdrant.createPayloadIndex(collectionName, {
+      field_name: 'userId',
+      field_schema: 'keyword',
+    });
+
+    await qdrant.createPayloadIndex(collectionName, {
+      field_name: 'documentId',
+      field_schema: 'keyword',
+    });
     console.log(`✅ Qdrant collection "${collectionName}" created`);
   }
 }

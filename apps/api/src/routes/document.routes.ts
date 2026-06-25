@@ -8,11 +8,16 @@ import {
   getDocumentById,
   listUserDocuments,
   DocumentError,
+  deleteDocument
 } from '../services/document.service.js';
+import { rateLimit } from '../middleware/rateLimit.js';
+import { getFileUrl } from '../lib/storage.js';
 
 const documents = new Hono();
 
 documents.use('*', authMiddleware);
+documents.use('/upload', rateLimit({ windowSeconds: 3600, maxRequests: 20 }));
+documents.use('/ingest-url', rateLimit({ windowSeconds: 3600, maxRequests: 20 }));
 
 const ingestUrlSchema = z.object({
   url: z.string().url(),
@@ -70,13 +75,13 @@ documents.post('/ingest-url', validateBody(ingestUrlSchema), async (c) => {
   }
 });
 
-documents.get('/:id', async (c) => {
+documents.delete('/:id', async (c) => {
   const userId = c.get('userId');
   const documentId = c.req.param('id');
 
   try {
-    const document = await getDocumentById(documentId, userId);
-    return c.json(document);
+    await deleteDocument(documentId, userId);
+    return c.json({ message: 'Document deleted successfully' }, 200);
   } catch (err) {
     if (err instanceof DocumentError) {
       return c.json({ error: err.message }, err.statusCode as 404);
@@ -90,5 +95,27 @@ documents.get('/', async (c) => {
   const docs = await listUserDocuments(userId);
   return c.json(docs);
 });
+
+documents.get('/:id/download-url', async (c) => {
+  const userId = c.get('userId');
+  const documentId = c.req.param('id');
+
+  try {
+    const document = await getDocumentById(documentId, userId);
+
+    if (!document.storageKey) {
+      return c.json({ error: 'No file available for this document' }, 404);
+    }
+
+    const url = await getFileUrl(document.storageKey, 3600); // 1 hour expiry
+    return c.json({ url, expiresIn: 3600 });
+  } catch (err) {
+    if (err instanceof DocumentError) {
+      return c.json({ error: err.message }, err.statusCode as 404);
+    }
+    throw err;
+  }
+});
+
 
 export default documents;

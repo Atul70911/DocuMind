@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { validateBody } from '../middleware/validate.js';
-import { registerUser, loginUser, AuthError } from '../services/auth.service.js';
+import { registerUser, loginUser, AuthError,logoutUser,refreshAccessToken } from '../services/auth.service.js';
 
 const auth = new Hono();
 

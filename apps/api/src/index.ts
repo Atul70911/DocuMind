@@ -13,6 +13,8 @@ import authRoutes from './routes/auth.routes.js';
 import documentRoutes from './routes/document.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import { documentQueue } from './queues/document.queue.js';
+import searchRoutes from './routes/search.routes.js';
+
 import mongoose from 'mongoose';
 
 
@@ -33,6 +35,7 @@ app.get('/health', (c) => c.json({ status: 'ok' }));
 app.route('/api/auth', authRoutes);
 app.route('/api/documents', documentRoutes);
 app.route('/health', healthRoutes);
+app.route('/api/search', searchRoutes);
 
 
 
