@@ -1,0 +1,28 @@
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment files
+.env
+.env.local
+
+# Distribution / build
+build/
+dist/
+*.egg-info/
+
+# Downloaded AI model weights/cache — these are large and shouldn't be in git.
+# Whisper, sentence-transformers, and Marker all cache downloaded models locally.
+*.pt
+*.bin
+*.safetensors
+.cache/
+
+# Jupyter (if you ever use notebooks for experimentation)
+.ipynb_checkpoints/

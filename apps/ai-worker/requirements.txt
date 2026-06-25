@@ -6,8 +6,8 @@ python-multipart==0.0.20
 
 # AI / ML
 sentence-transformers==3.3.1
-openai-whisper==20240930
 marker-pdf==1.2.3
+git+https://github.com/openai/whisper.git
 
 # HTTP client for calling Ollama
 httpx==0.28.1
