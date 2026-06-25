@@ -18,6 +18,9 @@ import { documentQueue } from './queues/document.queue.js';
 import searchRoutes from './routes/search.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 
+import shareLinkRoutes from './routes/shareLink.routes.js';
+import publicRoutes from './routes/public.routes.js';
+
 
 import mongoose from 'mongoose';
 import { AccessTokenPayload } from './utils/jwt.js';
@@ -43,6 +46,10 @@ app.route('/api/documents', documentRoutes);
 app.route('/health', healthRoutes);
 app.route('/api/search', searchRoutes);
 app.route('/api/chat', chatRoutes);
+
+
+app.route('/api/share-links', shareLinkRoutes);
+app.route('/api/public', publicRoutes);
 
 
 

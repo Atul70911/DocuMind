@@ -7,6 +7,7 @@ import { LibraryPage } from './pages/LibraryPage';
 import { ChatPage } from './pages/ChatPage';
 import { useDocumentStatusSocket } from './hooks/useDocumentStatusSocket';
 import { SearchPage } from './pages/SearchPage';
+import { PublicSharePage } from './pages/PublicSharePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/shared/:token" element={<PublicSharePage />} />
             <Route
               path="/library"
               element={
