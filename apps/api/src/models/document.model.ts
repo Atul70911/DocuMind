@@ -1,21 +1,25 @@
-import { Schema, model,Types, type Document as MongoDocument } from 'mongoose';
+import { Schema, model, Types, HydratedDocument } from 'mongoose';
 
 export type DocumentStatus = 'queued' | 'parsing' | 'embedding' | 'ready' | 'failed';
 export type DocumentSourceType = 'pdf' | 'docx' | 'audio' | 'video' | 'url';
 
-export interface IDocument extends MongoDocument {
+export interface IDocument {
+  _id: Types.ObjectId;      
   userId: Types.ObjectId;
   title: string;
   sourceType: DocumentSourceType;
   originalFilename?: string;
-  storageKey: string;     
-  sourceUrl?: string;        
+  storageKey: string;
+  sourceUrl?: string;
+  contentHash?: string;       
   status: DocumentStatus;
   summary?: string;
   errorMessage?: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type IDocumentDocument = HydratedDocument<IDocument>;
 
 const documentSchema = new Schema<IDocument>(
   {
@@ -29,6 +33,7 @@ const documentSchema = new Schema<IDocument>(
     originalFilename: { type: String },
     storageKey: { type: String, required: true },
     sourceUrl: { type: String },
+    contentHash: { type: String, index: true },
     status: {
       type: String,
       enum: ['queued', 'parsing', 'embedding', 'ready', 'failed'],

@@ -1,4 +1,4 @@
-import { Schema, model,Types, type Document as MongoDocument } from 'mongoose';
+import { Schema, model, Types, HydratedDocument } from 'mongoose';
 
 export interface IMessage {
   role: 'user' | 'assistant';
@@ -7,13 +7,16 @@ export interface IMessage {
   createdAt: Date;
 }
 
-export interface IConversation extends MongoDocument {
-  userId: Schema.Types.ObjectId;
-  documentId: Schema.Types.ObjectId;
+export interface IConversation {
+  _id: Types.ObjectId;
+  userId: Types.ObjectId;
+  documentId: Types.ObjectId;
   messages: IMessage[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type IConversationDocument = HydratedDocument<IConversation>;
 
 const messageSchema = new Schema<IMessage>(
   {
@@ -33,7 +36,7 @@ const conversationSchema = new Schema<IConversation>(
   {
     userId: { type: Types.ObjectId, ref: 'User', required: true, index: true },
     documentId: { type: Types.ObjectId, ref: 'Document', required: true, index: true },
-    messages: [messageSchema],
+    messages: { type: [messageSchema], default: [] },
   },
   { timestamps: true }
 );

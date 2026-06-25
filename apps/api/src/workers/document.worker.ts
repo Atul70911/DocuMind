@@ -1,6 +1,5 @@
-// workers/document.worker.ts
 import { Worker, type Job } from 'bullmq';
-import { redis } from '../lib/redis.js';
+import { redisConnectionOptions } from '../lib/redis.js';
 import { DocumentModel } from '../models/document.model.js';
 import type { DocumentJobData } from '../queues/document.queue.js';
 import { aiClient, AIWorkerError } from '../lib/aiClient.js';
@@ -146,7 +145,7 @@ export const documentWorker = new Worker<DocumentJobData>(
     'document-processing',
     processDocument,
     {
-        connection: redis,
+        connection: redisConnectionOptions,
         concurrency: 2,
     }
 );
@@ -160,40 +159,3 @@ documentWorker.on('failed', (job, err) => {
 });
 
 
-export async function retrySummary(documentId: string, userId: string) {
-  const document = await DocumentModel.findOne({ _id: documentId, userId });
-
-  if (!document) {
-    throw new DocumentError('Document not found', 404);
-  }
-
-  if (document.status !== 'ready') {
-    throw new DocumentError('Document must be fully processed before generating a summary', 409);
-  }
-
- 
-  const chunks = await qdrant.scroll(COLLECTION_NAME, {
-    filter: {
-      must: [
-        { key: 'documentId', match: { value: documentId } },
-        { key: 'userId', match: { value: userId } },
-      ],
-    },
-    limit: 1000,
-    with_payload: true,
-  });
-
-  const sortedText = chunks.points
-    .sort((a, b) => (a.payload?.chunkIndex as number) - (b.payload?.chunkIndex as number))
-    .map((p) => p.payload?.text as string)
-    .join(' ');
-
-  if (!sortedText) {
-    throw new DocumentError('No content available to summarize', 404);
-  }
-
-  const summary = await generateSummary(sortedText);
-  await saveSummary(documentId, summary);
-
-  return summary;
-}

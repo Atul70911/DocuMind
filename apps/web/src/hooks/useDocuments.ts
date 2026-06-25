@@ -56,3 +56,14 @@ export function useDeleteDocument() {
     },
   });
 }
+
+export function useRetrySummary(documentId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.post<{ summary: string }>(`/documents/${documentId}/retry-summary`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document', documentId] });
+    },
+  });
+}

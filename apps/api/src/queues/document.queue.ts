@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { redis } from '../lib/redis.js';
+import { redisConnectionOptions } from '../lib/redis.js';
 
 export interface DocumentJobData {
   documentId: string;
@@ -7,12 +7,12 @@ export interface DocumentJobData {
 }
 
 export const documentQueue = new Queue<DocumentJobData>('document-processing', {
-  connection: redis,
+  connection: redisConnectionOptions,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
       type: 'exponential',
-      delay: 5000, 
+      delay: 5000,
     },
     removeOnComplete: {
       age: 24 * 3600,

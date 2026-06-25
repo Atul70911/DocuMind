@@ -8,7 +8,8 @@ import {
   getDocumentById,
   listUserDocuments,
   DocumentError,
-  deleteDocument
+  deleteDocument,
+  retrySummary,
 } from '../services/document.service.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { getFileUrl } from '../lib/storage.js';

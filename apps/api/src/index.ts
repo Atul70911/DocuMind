@@ -17,6 +17,8 @@ import healthRoutes from './routes/health.routes.js';
 import { documentQueue } from './queues/document.queue.js';
 import searchRoutes from './routes/search.routes.js';
 import chatRoutes from './routes/chat.routes.js';
+import jwt from 'jsonwebtoken';
+import { registerConnection, removeConnection } from './lib/wsManager.js';
 
 import shareLinkRoutes from './routes/shareLink.routes.js';
 import publicRoutes from './routes/public.routes.js';
@@ -40,7 +42,6 @@ app.use('/api/*', async (c, next) => {
   return globalBodyLimit(c, next);
 });
 app.onError(errorHandler);
-app.get('/health', (c) => c.json({ status: 'ok' }));
 app.route('/api/auth', authRoutes);
 app.route('/api/documents', documentRoutes);
 app.route('/health', healthRoutes);
@@ -57,7 +58,7 @@ async function main() {
   await connectDB();
   await ensureBucketExists();
 
-  const server = serve({ fetch: app.fetch, port: env.PORT });
+  server = serve({ fetch: app.fetch, port: env.PORT });
 
   const wss = new WebSocketServer({ noServer: true });
 

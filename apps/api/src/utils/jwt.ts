@@ -14,8 +14,8 @@ export interface RefreshTokenPayload {
   tokenId: string;
 }
 
-const ACCESS_TOKEN_EXPIRES_IN = '15m'; 
-const REFRESH_TOKEN_EXPIRES_IN_SECONDS = 30 * 24 * 60 * 60; 
+const ACCESS_TOKEN_EXPIRES_IN = '15m';
+const REFRESH_TOKEN_EXPIRES_IN_SECONDS = 30 * 24 * 60 * 60;
 
 export function signAccessToken(payload: AccessTokenPayload): string {
   return jwt.sign(payload, env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
@@ -66,7 +66,7 @@ export async function revokeAllUserTokens(userId: string): Promise<void> {
   for await (const keys of stream) {
     if (keys.length === 0) continue;
     const values = await redis.mget(...keys);
-    const toDelete = keys.filter((_, i) => values[i] === userId);
+    const toDelete = keys.filter((_: string, i: number) => values[i] === userId);
     if (toDelete.length > 0) {
       await redis.del(...toDelete);
     }

@@ -1,154 +1,182 @@
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import { DocumentModel, type DocumentSourceType } from '../models/document.model.js';
-import { uploadFile } from '../lib/storage.js';
+import { uploadFile, deleteFile } from '../lib/storage.js';
 import { enqueueDocumentJob } from '../queues/document.queue.js';
 import { fileTypeFromBuffer } from 'file-type';
 import { sanitizeText } from '../utils/sanitize.js';
 import { sanitizeFilename } from '../utils/sanitizeFilename.js';
-import { deleteFile } from '../lib/storage.js';
 import { assertUrlIsSafe } from '../utils/urlSafety.js';
 import { qdrant } from '../lib/qdrant.js';
+import { generateSummary, saveSummary } from './summary.service.js';
 
 const COLLECTION_NAME = 'document_chunks';
 
-
 export class DocumentError extends Error {
-    constructor(message: string, public statusCode: number = 400) {
-        super(message);
-        this.name = 'DocumentError';
-    }
+  constructor(message: string, public statusCode: number = 400) {
+    super(message);
+    this.name = 'DocumentError';
+  }
 }
 
 const ALLOWED_MIME_TYPES: Record<string, DocumentSourceType> = {
-    'application/pdf': 'pdf',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-    'audio/mpeg': 'audio',
-    'audio/mp4': 'audio',
-    'audio/wav': 'audio',
-    'video/mp4': 'video',
+  'application/pdf': 'pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'audio/mpeg': 'audio',
+  'audio/mp4': 'audio',
+  'audio/wav': 'audio',
+  'video/mp4': 'video',
 };
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
 
 interface UploadFileInput {
-    userId: string;
-    file: File;
+  userId: string;
+  file: File;
 }
 
 interface IngestUrlInput {
-    userId: string;
-    url: string;
+  userId: string;
+  url: string;
 }
 
 export async function uploadDocument(input: UploadFileInput) {
-    const { userId, file } = input;
+  const { userId, file } = input;
 
-    const declaredType = ALLOWED_MIME_TYPES[file.type];
-    if (!declaredType) {
-        throw new DocumentError(
-            `Unsupported file type: ${file.type}. Allowed: PDF, DOCX, MP3, WAV, MP4`,
-            415
-        );
-    }
+  const declaredType = ALLOWED_MIME_TYPES[file.type];
+  if (!declaredType) {
+    throw new DocumentError(
+      `Unsupported file type: ${file.type}. Allowed: PDF, DOCX, MP3, WAV, MP4`,
+      415
+    );
+  }
 
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-        throw new DocumentError('File exceeds 100MB limit', 413);
-    }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new DocumentError('File exceeds 100MB limit', 413);
+  }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+  const buffer = Buffer.from(await file.arrayBuffer());
 
-    const detected = await fileTypeFromBuffer(buffer);
-    const isValidMatch =
-        detected?.mime === file.type ||
-        (file.type.includes('wordprocessingml') && detected?.ext === 'docx');
+  const detected = await fileTypeFromBuffer(buffer);
+  const isValidMatch =
+    detected?.mime === file.type ||
+    (file.type.includes('wordprocessingml') && detected?.ext === 'docx');
 
-    if (!isValidMatch) {
-        throw new DocumentError('File content does not match its declared type', 415);
-    }
+  if (!isValidMatch) {
+    throw new DocumentError('File content does not match its declared type', 415);
+  }
 
-    const safeFilename = sanitizeFilename(file.name);
-    const storageKey = `${userId}/${randomUUID()}-${safeFilename}`;
+  // Idempotency check — same user, same exact file content, reject the duplicate
+  // rather than silently re-processing (and re-paying for) identical content.
+  const contentHash = createHash('sha256').update(buffer).digest('hex');
+  const existing = await DocumentModel.findOne({ userId, contentHash });
+  if (existing) {
+    throw new DocumentError('You have already uploaded this exact file', 409);
+  }
 
-    await uploadFile(storageKey, buffer, file.type);
+  const safeFilename = sanitizeFilename(file.name);
+  const storageKey = `${userId}/${randomUUID()}-${safeFilename}`;
 
-    let document;
-    try {
-        document = await DocumentModel.create({
-            userId,
-            title: sanitizeText(safeFilename),
-            sourceType: declaredType,
-            originalFilename: safeFilename,
-            storageKey,
-            status: 'queued',
-        });
-    } catch (err) {
-        await deleteFile(storageKey).catch(() => {
-        });
-        throw err;
-    }
+  await uploadFile(storageKey, buffer, file.type);
 
-    try {
-        await enqueueDocumentJob({ documentId: document._id.toString(), userId });
-    } catch (err) {
-        document.status = 'failed';
-        document.errorMessage = 'Failed to queue for processing';
-        await document.save().catch(() => { });
-        throw err;
-    }
+  let document;
+  try {
+    document = await DocumentModel.create({
+      userId,
+      title: sanitizeText(safeFilename),
+      sourceType: declaredType,
+      originalFilename: safeFilename,
+      storageKey,
+      contentHash,
+      status: 'queued',
+    });
+  } catch (err) {
+    await deleteFile(storageKey).catch(() => {});
+    throw err;
+  }
 
-    return document;
+  try {
+    await enqueueDocumentJob({ documentId: document._id.toString(), userId });
+  } catch (err) {
+    document.status = 'failed';
+    document.errorMessage = 'Failed to queue for processing';
+    await document.save().catch(() => {});
+    throw err;
+  }
+
+  return document;
 }
 
-
 export async function ingestUrl(input: IngestUrlInput) {
-    const { userId, url } = input;
+  const { userId, url } = input;
 
-    let parsedUrl: URL;
-    try {
-        parsedUrl = new URL(url);
-    } catch {
-        throw new DocumentError('Invalid URL', 400);
-    }
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new DocumentError('Invalid URL', 400);
+  }
 
-    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-        throw new DocumentError('URL must use http or https', 400);
-    }
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    throw new DocumentError('URL must use http or https', 400);
+  }
 
-    try {
-        await assertUrlIsSafe(url);
-    } catch (err) {
-        throw new DocumentError(
-            err instanceof Error ? err.message : 'URL validation failed',
-            400
-        );
-    }
+  try {
+    await assertUrlIsSafe(url);
+  } catch (err) {
+    throw new DocumentError(
+      err instanceof Error ? err.message : 'URL validation failed',
+      400
+    );
+  }
 
-    const document = await DocumentModel.create({
-        userId,
-        title: parsedUrl.hostname,
-        sourceType: 'url',
-        sourceUrl: url,
-        storageKey: '',
-        status: 'queued',
-    });
+  const document = await DocumentModel.create({
+    userId,
+    title: parsedUrl.hostname,
+    sourceType: 'url',
+    sourceUrl: url,
+    storageKey: '',
+    status: 'queued',
+  });
 
-    await enqueueDocumentJob({ documentId: document._id.toString(), userId });
+  await enqueueDocumentJob({ documentId: document._id.toString(), userId });
 
-    return document;
+  return document;
 }
 
 export async function getDocumentById(documentId: string, userId: string) {
-    const document = await DocumentModel.findOne({ _id: documentId, userId });
+  const document = await DocumentModel.findOne({ _id: documentId, userId });
 
-    if (!document) {
-        throw new DocumentError('Document not found', 404);
-    }
+  if (!document) {
+    throw new DocumentError('Document not found', 404);
+  }
 
-    return document;
+  return document;
 }
 
-export async function listUserDocuments(userId: string) {
-    return DocumentModel.find({ userId }).sort({ createdAt: -1 });
+interface ListDocumentsOptions {
+  page?: number;
+  limit?: number;
+}
+
+export async function listUserDocuments(userId: string, options: ListDocumentsOptions = {}) {
+  const page = Math.max(1, options.page ?? 1);
+  const limit = Math.min(100, Math.max(1, options.limit ?? 20));
+  const skip = (page - 1) * limit;
+
+  const [documents, total] = await Promise.all([
+    DocumentModel.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    DocumentModel.countDocuments({ userId }),
+  ]);
+
+  return {
+    documents,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 }
 
 export async function deleteDocument(documentId: string, userId: string) {
@@ -178,5 +206,47 @@ export async function deleteDocument(documentId: string, userId: string) {
     });
 
   await document.deleteOne();
+}
+
+export async function retrySummary(documentId: string, userId: string) {
+  const document = await DocumentModel.findOne({ _id: documentId, userId });
+
+  if (!document) {
+    throw new DocumentError('Document not found', 404);
+  }
+
+  if (document.status !== 'ready') {
+    throw new DocumentError(
+      'Document must be fully processed before generating a summary',
+      409
+    );
+  }
+
+  const chunks = await qdrant.scroll(COLLECTION_NAME, {
+    filter: {
+      must: [
+        { key: 'documentId', match: { value: documentId } },
+        { key: 'userId', match: { value: userId } },
+      ],
+    },
+    limit: 1000,
+    with_payload: true,
+  });
+
+  const sortedText = chunks.points
+    .sort(
+      (a, b) => (a.payload?.chunkIndex as number) - (b.payload?.chunkIndex as number)
+    )
+    .map((p) => p.payload?.text as string)
+    .join(' ');
+
+  if (!sortedText) {
+    throw new DocumentError('No content available to summarize', 404);
+  }
+
+  const summary = await generateSummary(sortedText);
+  await saveSummary(documentId, summary);
+
+  return summary;
 }
 
