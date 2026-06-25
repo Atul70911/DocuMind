@@ -14,6 +14,8 @@ import documentRoutes from './routes/document.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import { documentQueue } from './queues/document.queue.js';
 import searchRoutes from './routes/search.routes.js';
+import chatRoutes from './routes/chat.routes.js';
+
 
 import mongoose from 'mongoose';
 
@@ -36,7 +38,7 @@ app.route('/api/auth', authRoutes);
 app.route('/api/documents', documentRoutes);
 app.route('/health', healthRoutes);
 app.route('/api/search', searchRoutes);
-
+app.route('/api/chat', chatRoutes);
 
 
 
