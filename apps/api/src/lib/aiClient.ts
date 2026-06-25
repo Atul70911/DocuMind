@@ -1,3 +1,4 @@
+// lib/aiClient.ts
 import { env } from '../config/env.js';
 
 const AI_WORKER_BASE = env.AI_WORKER_URL;
@@ -7,6 +8,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'X-Internal-Api-Key': env.INTERNAL_API_KEY, // shared secret
       ...options.headers,
     },
   });
@@ -18,6 +20,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   return res.json() as Promise<T>;
 }
+
+// ...rest unchanged
 
 export const aiClient = {
   embed: (texts: string[]) =>

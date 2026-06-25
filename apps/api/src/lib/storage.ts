@@ -12,6 +12,13 @@ export const s3 = new S3Client({
   forcePathStyle: true,
 });
 
+export class StorageError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'StorageError';
+  }
+}
+
 const BUCKET = env.MINIO_BUCKET;
 
 export async function ensureBucketExists() {
@@ -24,19 +31,26 @@ export async function ensureBucketExists() {
 }
 
 export async function uploadFile(key: string, body: Buffer, contentType: string) {
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    })
-  );
-
-  return key;
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      })
+    );
+    return key;
+  } catch (err) {
+    throw new StorageError('Failed to upload file to storage', err);
+  }
 }
 
 export async function getFileUrl(key: string, expiresInSeconds = 3600): Promise<string> {
-  const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
-  return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
+  try {
+    const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
+    return await getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
+  } catch (err) {
+    throw new StorageError('Failed to generate file URL', err);
+  }
 }

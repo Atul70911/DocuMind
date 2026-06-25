@@ -44,4 +44,34 @@ auth.post('/login', validateBody(loginSchema), async (c) => {
   }
 });
 
+auth.post('/refresh', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const refreshToken = body?.refreshToken;
+
+  if (!refreshToken) {
+    return c.json({ error: 'refreshToken is required' }, 400);
+  }
+
+  try {
+    const result = await refreshAccessToken(refreshToken);
+    return c.json(result, 200);
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return c.json({ error: err.message }, err.statusCode as 401);
+    }
+    throw err;
+  }
+});
+
+auth.post('/logout', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const refreshToken = body?.refreshToken;
+
+  if (refreshToken) {
+    await logoutUser(refreshToken);
+  }
+
+  return c.json({ message: 'Logged out successfully' }, 200);
+});
+
 export default auth;

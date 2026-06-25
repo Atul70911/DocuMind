@@ -2,7 +2,7 @@ import type { MiddlewareHandler } from 'hono';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 
-export interface JWTPayload {
+export interface AccessTokenPayload {
   userId: string;
   email: string;
 }
@@ -25,7 +25,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
   const token = authHeader.slice('Bearer '.length);
 
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
+    const payload = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
 
     c.set('userId', payload.userId);
     c.set('userEmail', payload.email);
